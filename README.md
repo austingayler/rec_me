@@ -1,2 +1,2 @@
 # rec_me
-Gets the best songs by an artist on last.fm and downloads them
+Gets the best songs from recommended artists on last.fm and downloads them
