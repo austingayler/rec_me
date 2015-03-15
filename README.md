@@ -1,5 +1,5 @@
 # rec_me
-Gets the best songs from recommended artists on last.fm and downloads them from youtube after verifying using the song length. If an artist has a lot of songs that are highly played, the downloader will grab more of them--if the artist has only one or two highly played songs, it will just get those. Downloaded songs are put in a /music/ folder.
+Gets the best songs from recommended artists on last.fm and downloads them from Youtube after matching the songs using the duration of the song provided by Last.fm. If an artist has a lot of songs that are highly played, the downloader will grab more of them--if the artist has only one or two highly played songs, it will just get those. Downloaded songs are put in a /music/ folder.
 Uses the Java Last.fm API bindings, Google Data API, jaudiotagger, and youtube-dl.
 
 Dependencies: 
