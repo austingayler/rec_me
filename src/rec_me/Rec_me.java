@@ -15,6 +15,7 @@ import de.umass.lastfm.PaginatedResult;
 import de.umass.lastfm.Session;
 import de.umass.lastfm.Track;
 import de.umass.lastfm.User;
+//import de.umass.lastfm.Tag;
 import static de.umass.util.StringUtilities.md5;
 import java.awt.Desktop;
 import java.io.BufferedReader;
@@ -117,16 +118,18 @@ public class Rec_me {
             for (VideoEntry videoEntry : videoFeed.getEntries()) {
                 mediaGroup = videoEntry.getMediaGroup();
                 int ytTime = Ints.checkedCast(mediaGroup.getDuration());
-                
+
                 if (DEBUG_MODE) {
                     System.out.println("Duration of current vid: " + ytTime);
                 }
-                
+
                 double lowRange, highRange;
                 lowRange = lfmTime - ((0.015) * (lfmTime));
                 highRange = lfmTime + ((0.015) * (lfmTime));
                 //the video in question must be very close to last.fm's reported time (which is probably the accurate one) to be downloaded
-                System.out.println(lowRange + " < " + ytTime + " < " + highRange);
+                if (DEBUG_MODE) {
+                    System.out.println(lowRange + " < " + ytTime + " < " + highRange);
+                }
                 if (ytTime > lowRange && ytTime < highRange) {
                     //we have a winner!
                     break;
@@ -138,10 +141,10 @@ public class Rec_me {
             if (artist.length() > 0 && artist.charAt(artist.length() - 1) == '.') {
                 artist = artist.substring(0, artist.length() - 1);
             }
-            
-            manageDir(artist); //create the directory for the artist
+
+            //manageDir(artist); //create the directory for the artist
             youtube_dl(mediaGroup.getVideoId(), artist);
-            
+
             if (DEBUG_MODE) {
                 System.out.println("Downloading from " + url);
                 System.out.println("Tagging " + curTrack.getName());
@@ -156,8 +159,9 @@ public class Rec_me {
         //youtube-dl.exe must be in the same directory
         Runtime rt = Runtime.getRuntime();
         //default file name is song_id.m4a
-        String artistDir = "/music/" + artist + "/" + "%(id)s.%(ext)s";
+        String artistDir = "/music/" + "%(id)s.%(ext)s";
         String[] commands = {"youtube-dl", "--format", "bestaudio", "-o", artistDir, url};
+
         if (DEBUG_MODE) {
             System.out.println("Download command: " + Arrays.toString(commands));
         }
@@ -185,24 +189,28 @@ public class Rec_me {
 
     }
 
-    private static void manageDir(String artist) {
-        //create directory
-        File f = new File("/music/" + artist);
-        if (!f.isDirectory()) {
-            boolean success = (new File(artist)).mkdirs();
-            if (!success) {
-                System.out.println("Directory creation failed. ");
-            }
-        }
-
-    }
-
+//    private static void manageDir(String artist) {
+//        //create directory
+//        File f = new File("/music/" + artist);
+//        if (!f.isDirectory()) {
+//            boolean success = (new File(artist)).mkdirs();
+//            if (!success) {
+//                System.out.println("Directory creation failed. ");
+//            }
+//        }
+//
+//    }
     private static void tag(String videoId, String artist, String name, String album, String mbid) {
+
+        String fp = "music/" + videoId + ".m4a";
+        if (DEBUG_MODE) {
+            System.out.println("Tagging " + fp);
+        }
+        File file = new File("music/" + videoId + ".m4a");
         try {
             //uses jaudiotagger to tag the files after downloading
-            File fp = new File("/music/" + artist + "/" + videoId + ".m4a");
-            System.out.println("Tagging " + fp);
-            AudioFile f = AudioFileIO.read(fp);
+            
+            AudioFile f = AudioFileIO.read(file);
             Tag tag = f.getTag();
             tag.setField(FieldKey.ARTIST, artist);
             //tag.setField(FieldKey.ALBUM, album);
@@ -211,16 +219,16 @@ public class Rec_me {
 
             f.commit();
 
-            File newName = new File("/music/" + artist + "/" + artist + " - " + name + ".m4a");
-            boolean success = fp.renameTo(newName); //rename to artist - track
-
-            if (!success) {
-                //file not successfully renamed--renameTo is not cross platform
-            }
-
         } catch (CannotReadException | IOException | TagException | ReadOnlyFileException | InvalidAudioFrameException | CannotWriteException ex) {
-            Logger.getLogger(Rec_me.class
-                    .getName()).log(Level.SEVERE, null, ex);
+            if(DEBUG_MODE) {
+                Logger.getLogger(Rec_me.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        File newName = new File("/music/" + artist + " - " + name + ".m4a");
+        boolean success = file.renameTo(newName); //rename to artist - track
+        if (!success && true) {
+            System.out.println("Failed to rename file.");
         }
     }
 
@@ -369,7 +377,7 @@ public class Rec_me {
         } while (validInput == false);
 
         validInput = false;
-        System.out.println("Enter song listen parameter 1 (warning, sensitive--0.4 is the default value): ");
+        System.out.println("Enter song listen parameter 2 (warning, sensitive--0.6 is the default value): ");
         do {
             param = in.nextFloat();
             if (param > 1 || param < 0) {
@@ -389,6 +397,7 @@ public class Rec_me {
     }
 
     private static void addUserRecs() {
+        //add songs to dl queue by those recommended by last.fm
         Scanner in = new Scanner(System.in);
         int numArtists;
         boolean validInput = false;
@@ -406,6 +415,79 @@ public class Rec_me {
         user.setRecArtists(recs.getPageResults());
         Iterator artistItr = user.getRecArtists().iterator();
 
+        addResultsToDownloadQueue(artistItr, numArtists);
+    }
+
+    private static void addSongsByTag() {
+        //add tracks to dl queue from last.fm's top tracks page for a tag
+        // ie http://www.last.fm/tag/electronic/tracks
+        Scanner in = new Scanner(System.in);
+
+        int numTracks;
+        boolean validInput = false;
+
+        String tag;
+        validInput = false;
+        System.out.println("What tag do you want to get songs from?");
+        do {
+            String regex = "^[a-zA-Z0-9-_]+$";
+            tag = in.nextLine();
+            if (tag.trim().length() >= 32 || !tag.matches(regex)) {
+                System.out.println("Invalid tag. Please try again.");
+            } else {
+                validInput = true;
+            }
+        } while (validInput == false);
+
+        System.out.println("How many top tracks for that tag do you want?");
+        do {
+            numTracks = in.nextInt();
+            if (numTracks > 50 || numTracks < 1) {
+                System.out.println("Invalid input. Please try a better number (1-50).");
+            } else {
+                validInput = true;
+            }
+        } while (validInput == false);
+
+        //tag is already being used by jaudiotagger class
+        Collection<Track> topTracksForTag = de.umass.lastfm.Tag.getTopTracks(tag, api_sig);
+        Iterator<Track> itr = topTracksForTag.iterator();
+        while (itr.hasNext()) {
+            Track track = itr.next();
+            if(DEBUG_MODE) {
+                System.out.println(track.getName() + " is a good track. Adding to download list.");
+            }
+            downloadQueue.add(itr.next());
+        }
+    }
+
+    private static void addSongsBySimilarArtist() {
+        //add songs to dl queue that are from artists similar to the specified one
+        Scanner in = new Scanner(System.in);
+        int numArtists;
+        String artist;
+        boolean validInput = false;
+        System.out.println("By which artist do you want tracks similar to?");
+        artist = in.nextLine();
+
+        System.out.println("How many artists do you want to sample?");
+        do {
+            numArtists = in.nextInt();
+            if (numArtists > 50 || numArtists < 1) {
+                System.out.println("Invalid input. Please try a better number (1-50).");
+            } else {
+                validInput = true;
+            }
+        } while (validInput == false);
+
+        Collection<Artist> recs = Artist.getSimilar(artist, api_sig);
+        Iterator artistItr = recs.iterator();
+
+        addResultsToDownloadQueue(artistItr, numArtists);
+    }
+
+    private static void addResultsToDownloadQueue(Iterator artistItr, int numArtists) {
+        //goes through the iterator and adds the songs to the dl queue if they are good enough
         int i = 0;
         while (artistItr.hasNext()) {
             i++;
@@ -422,16 +504,16 @@ public class Rec_me {
 
             downloadQueue.add(trackOne); //always download first track by an artist
 
-            System.out.println(trackOne.getName());
+            System.out.println(trackOne.getName() + " is a good track and will be downloaded.");
             while (trackItr.hasNext()) {
                 curTrack = (Track) trackItr.next();
                 double listenerRatioOne = (double) curTrack.getListeners() / trackOne.getListeners(); //comparison to first song
                 double listenerRatioTwo = (double) curTrack.getListeners() / prevTrack.getListeners();//comparison to next song
 
                 if (listenerRatioOne > SONG_TOLERANCE_1 && listenerRatioTwo > SONG_TOLERANCE_2) {
-                    if(DEBUG_MODE) {
+//                    if (DEBUG_MODE) {
                         System.out.println(curTrack.getName() + " is a good track and will be downloaded.");
-                    }
+//                    }
                     downloadQueue.add(curTrack);
                 }
 
@@ -439,17 +521,9 @@ public class Rec_me {
             }
             System.out.println();
 
-            if (i > numArtists) {
+            if (i >= numArtists) {
                 break;
             }
         }
-    }
-
-    private static void addSongsByTag() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    private static void addSongsBySimilarArtist() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }
