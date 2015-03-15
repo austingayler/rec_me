@@ -1,27 +1,28 @@
 # rec_me
-Gets the best songs from recommended artists on last.fm and downloads them from youtube after verifying using the song length. If an artist has a lot of songs that are highly played, the downloader will grab more of them--if the artist has only one or two highly played songs, it will just get those.
+Gets the best songs from recommended artists on last.fm and downloads them from youtube after verifying using the song length. If an artist has a lot of songs that are highly played, the downloader will grab more of them--if the artist has only one or two highly played songs, it will just get those. Downloaded songs are put in a /music/ folder.
 Uses the Java Last.fm API bindings, Google Data API, jaudiotagger, and youtube-dl.
 
 Dependencies: 
-lastfm-java-0.1.2.jar
-gdata-client-1.0.jar
-gdata-youtube-2.0.jar
-gdata-core-1.0.jar
-gdata-media-1.0.jar
-guava-18.0.jar
-jaudiotagger-2.2.3.jar
-javax.mail.jar
+* lastfm-java-0.1.2.jar
+*  gdata-client-1.0.jar
+*  gdata-youtube-2.0.jar
+*  gdata-core-1.0.jar
+*  gdata-media-1.0.jar
+*  guava-18.0.jar
+*  jaudiotagger-2.2.3.jar
+*  javax.mail.jar
 
 Example output:
+```
 Welcome to rec_me, the automated music downloader powered by Last.fm.
 To get started, you'll need to provide a few pieces of information.
 
 Last.fm API key: 
-~~~
+...
 Last.fm secret key: 
-~~~
+...
 Youtube API key: 
-~~~
+...
 Last.fm username: 
 hello_world
 
@@ -75,3 +76,4 @@ Q. Quit
 [download] 100% of 4.36MiB in 00:17                  
 
 Thanks for using rec_me! Enjoy the music!
+```
